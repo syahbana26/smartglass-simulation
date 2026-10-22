@@ -206,7 +206,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
                 className={`w-full py-2.5 px-4 rounded-lg ${t.primaryBtn} font-medium text-xs flex items-center justify-center gap-2 transition-colors`}
               >
                 <Download className="w-4 h-4" />
-                {deferredPrompt ? 'Install SmartGlass (Native)' : 'Install / Panduan Browser'}
+                {deferredPrompt ? 'Install SmartGlass' : 'Install Manual'}
               </button>
             </div>
           )}
