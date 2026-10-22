@@ -186,34 +186,9 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
       <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <div>
-            <label className="text-xs font-medium block">Instalasi Aplikasi (PWA)</label>
-            <p className={`text-[11px] ${t.textSec} mt-0.5`}>
-              Pasang SmartGlass V1 di perangkat Android Anda (Chrome / Edge) untuk akses cepat.
-            </p>
+            <label className="text-xs font-medium block">Instal App</label>
           </div>
-          <button
-            onClick={() => setShowDiagnostics(!showDiagnostics)}
-            className={`px-2 py-1 rounded text-[10px] ${t.surfaceSec} border ${t.border} ${t.textSec} hover:${t.textPrimary} flex items-center gap-1`}
-          >
-            <Info className="w-3 h-3" />
-            {showDiagnostics ? 'Sembunyikan Diagnostik' : 'Cek Diagnostik PWA'}
-          </button>
         </div>
-
-        {showDiagnostics && (
-          <div className={`p-3 rounded-xl ${t.surfaceSec} border ${t.border} text-[11px] space-y-1 font-mono`}>
-            <div className="font-bold pb-1 border-b border-slate-300 dark:border-slate-700">Audit & Diagnostik PWA:</div>
-            <div>- Protocol OK (HTTPS / Localhost): <strong className={diag.protocolOk ? 'text-emerald-500' : 'text-rose-500'}>{String(diag.protocolOk)}</strong></div>
-            <div>- Service Worker Registered: <strong className={diag.swRegistered ? 'text-emerald-500' : 'text-amber-500'}>{String(diag.swRegistered)}</strong></div>
-            <div>- Service Worker Controller: <strong className={diag.swController ? 'text-emerald-500' : 'text-amber-500'}>{String(diag.swController)}</strong></div>
-            <div>- Manifest Fetch Status: <strong className={diag.manifestStatus.includes('OK') ? 'text-emerald-500' : 'text-rose-500'}>{diag.manifestStatus}</strong></div>
-            <div>- Standalone Mode Active: <strong className={diag.isStandalone ? 'text-emerald-500' : 'text-slate-400'}>{String(diag.isStandalone)}</strong></div>
-            <div>- Event Received (`beforeinstallprompt`): <strong className={eventReceived ? 'text-emerald-500' : 'text-amber-500'}>{String(eventReceived)}</strong></div>
-            <div>- Prompt Available (`deferredPrompt`): <strong className={deferredPrompt ? 'text-emerald-500' : 'text-amber-500'}>{String(Boolean(deferredPrompt))}</strong></div>
-            <div>- Prompt Already Used: <strong className={promptUsed ? 'text-blue-400' : 'text-slate-400'}>{String(promptUsed)}</strong></div>
-            <div>- User Choice Result: <strong className="text-emerald-400">{userChoiceResult}</strong></div>
-          </div>
-        )}
 
         <div className={`p-4 rounded-xl ${t.surfaceSec} border ${t.border} space-y-3 text-xs`}>
           {isInstalled ? (
@@ -224,20 +199,6 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className={t.textSec}>
-                  Status: <strong className={t.textPrimary}>{deferredPrompt ? 'Siap Diinstal (Prompt Native)' : 'Menunggu Event / Menu'}</strong>
-                </span>
-                {!isModalOpen && (
-                  <button
-                    onClick={() => {
-                      setShowManualGuidance(false);
-                      setIsModalOpen(true);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg ${t.surface} border ${t.border} ${t.textPrimary} hover:opacity-80 transition-opacity font-medium flex items-center gap-1.5`}
-                  >
-                    Buka Popup Instalasi
-                  </button>
-                )}
               </div>
 
               <button
@@ -249,80 +210,8 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
               </button>
             </div>
           )}
-
-          {installStatus && (
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">{installStatus}</p>
-          )}
         </div>
       </div>
-
-      {/* SLIDE-IN SIDE POPUP */}
-      {isModalOpen && !isInstalled && (
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 max-w-sm w-full animate-in slide-in-from-right duration-300">
-          <div className={`${t.surface} border ${t.border} rounded-2xl shadow-xl p-4 sm:p-5 space-y-4 text-xs`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl ${t.surfaceSec} border ${t.border} flex items-center justify-center shrink-0`}>
-                  <Glasses className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">Install SmartGlass</h3>
-                  <p className={`text-[11px] ${t.textSec} mt-0.5`}>
-                    Akses cepat & pengalaman aplikasi native (Android Chrome / Edge).
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={handleDismissModal}
-                className={`w-7 h-7 rounded-lg ${t.surfaceSec} ${t.textSec} hover:${t.textPrimary} flex items-center justify-center transition-colors shrink-0`}
-                title="Tutup"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {showManualGuidance ? (
-              <div className={`p-3 rounded-xl ${t.surfaceSec} border ${t.border} space-y-2 text-[11px]`}>
-                <div className="flex items-center justify-between font-semibold">
-                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    Informasi Batasan Browser
-                  </span>
-                  <button onClick={() => setShowManualGuidance(false)} className="text-blue-500 hover:underline">Kembali</button>
-                </div>
-                <p className={`${t.textSec} leading-relaxed`}>
-                  Browser belum mengirim event <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded">beforeinstallprompt</code> secara otomatis. Secara teknis, aplikasi web <strong>tidak dapat memaksa</strong> dialog instalasi native terbuka tanpa event ini.
-                </p>
-                <p className={`${t.textSec} leading-relaxed`}>
-                  Anda tetap dapat menginstal aplikasi melalui menu resmi browser (ikon titik tiga <strong className="text-emerald-500">⋮</strong> di pojok kanan atas Chrome/Edge → <strong className="text-emerald-500">&quot;Instal aplikasi&quot;</strong>).
-                </p>
-              </div>
-            ) : (
-              <p className={`text-[11px] ${t.textSec} leading-relaxed`}>
-                {deferredPrompt 
-                  ? 'Browser siap! Klik Install di bawah untuk membuka dialog instalasi native.'
-                  : 'Klik Install untuk memicu dialog native (atau melihat info jika event belum dikirim browser).'}
-              </p>
-            )}
-
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                onClick={handleDismissModal}
-                className={`px-3.5 py-2 rounded-lg ${t.surfaceSec} border ${t.border} ${t.textSec} hover:${t.textPrimary} font-medium transition-colors`}
-              >
-                Not Now
-              </button>
-              <button
-                onClick={handleInstallClick}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${t.primaryBtn}`}
-              >
-                <Download className="w-3.5 h-3.5" />
-                {deferredPrompt ? 'Install (Native)' : 'Install'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
