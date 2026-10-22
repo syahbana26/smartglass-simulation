@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "SmartGlass",
     description: "Aplikasi simulasi SmartGlass untuk membantu aksesibilitas penyandang disabilitas.",
     start_url: "/dashboard",
+    scope: "/",
     display: "standalone",
     background_color: "#0B0F17",
     theme_color: "#0B0F17",

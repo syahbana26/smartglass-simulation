@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Download, CheckCircle2, Smartphone, Monitor, X, Sparkles, Glasses } from 'lucide-react';
+import { Download, CheckCircle2, X, Glasses } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -22,7 +22,6 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
   });
   const [installStatus, setInstallStatus] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showManualHelp, setShowManualHelp] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -34,7 +33,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
       const handleAppInstalled = () => {
         setIsInstalled(true);
         setDeferredPrompt(null);
-        setInstallStatus('Aplikasi berhasil dipasang!');
+        setInstallStatus('Aplikasi berhasil dipasang.');
         setIsModalOpen(false);
       };
 
@@ -61,28 +60,24 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
   }, [isInstalled]);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      try {
-        await deferredPrompt.prompt();
-        const choiceResult = await deferredPrompt.userChoice;
-        if (choiceResult.outcome === 'accepted') {
-          setInstallStatus('Pengguna menerima instalasi.');
-        } else {
-          setInstallStatus('Instalasi dibatalkan.');
-        }
-        setDeferredPrompt(null);
-        setIsModalOpen(false);
-      } catch (err) {
-        console.error('Error during install prompt:', err);
+    if (!deferredPrompt) return;
+    try {
+      await deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult.outcome === 'accepted') {
+        setInstallStatus('Pengguna menerima instalasi.');
+      } else {
+        setInstallStatus('Instalasi dibatalkan.');
       }
-    } else {
-      setShowManualHelp(true);
+      setDeferredPrompt(null);
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Error during install prompt:', err);
     }
   };
 
   const handleDismissModal = () => {
     setIsModalOpen(false);
-    setShowManualHelp(false);
     try {
       localStorage.setItem('smartglass_pwa_dismissed', 'true');
     } catch {}
@@ -112,7 +107,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
           <div>
             <label className="text-xs font-medium block">Instalasi Aplikasi (PWA)</label>
             <p className={`text-[11px] ${t.textSec} mt-0.5`}>
-              Pasang SmartGlass V1 di perangkat Anda untuk akses cepat dan pengalaman seperti aplikasi native.
+              Pasang SmartGlass V1 di perangkat Android Anda (Chrome / Edge) untuk akses cepat.
             </p>
           </div>
         </div>
@@ -126,19 +121,20 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className={t.textSec}>Status: <strong className={t.textPrimary}>{deferredPrompt ? 'Siap Diinstal' : 'Panduan Manual Tersedia'}</strong></span>
-                <button
-                  onClick={() => {
-                    setShowManualHelp(false);
-                    setIsModalOpen(true);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg ${t.surface} border ${t.border} ${t.textPrimary} hover:opacity-80 transition-opacity font-medium flex items-center gap-1.5`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                  Buka Popup Instalasi
-                </button>
+                <span className={t.textSec}>
+                  Status: <strong className={t.textPrimary}>{deferredPrompt ? 'Siap Diinstal' : 'Menunggu Event Browser'}</strong>
+                </span>
+                {!isModalOpen && (
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className={`px-3 py-1.5 rounded-lg ${t.surface} border ${t.border} ${t.textPrimary} hover:opacity-80 transition-opacity font-medium flex items-center gap-1.5`}
+                  >
+                    Buka Popup Instalasi
+                  </button>
+                )}
               </div>
-              {deferredPrompt && (
+
+              {deferredPrompt ? (
                 <button
                   onClick={handleInstallClick}
                   className={`w-full py-2.5 px-4 rounded-lg ${t.primaryBtn} font-medium text-xs flex items-center justify-center gap-2 transition-colors`}
@@ -146,6 +142,10 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
                   <Download className="w-4 h-4" />
                   Install SmartGlass
                 </button>
+              ) : (
+                <div className={`w-full py-2 px-3 rounded-lg ${t.surface} border ${t.border} ${t.textSec} text-center text-[11px]`}>
+                  Instalasi belum tersedia / Menunggu aksi browser (Android Chrome / Edge).
+                </div>
               )}
             </div>
           )}
@@ -153,37 +153,10 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
           {installStatus && (
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">{installStatus}</p>
           )}
-
-          <div className={`pt-3 border-t ${t.border} space-y-2.5`}>
-            <p className={`font-semibold ${t.textPrimary}`}>Petunjuk Instalasi Manual:</p>
-            
-            <div className="space-y-2 text-[11px]">
-              <div className="flex items-start gap-2">
-                <Smartphone className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-                <div>
-                  <strong className={t.textPrimary}>Android (Chrome / Edge):</strong> Buka menu browser (ikon titik tiga di pojok kanan atas), lalu pilih <strong className={t.textPrimary}>&quot;Instal aplikasi&quot;</strong> atau <strong className={t.textPrimary}>&quot;Tambahkan ke layar utama&quot;</strong>.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2">
-                <Smartphone className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
-                <div>
-                  <strong className={t.textPrimary}>iPhone / iPad (Safari):</strong> Ketuk tombol <strong className={t.textPrimary}>Bagikan (Share)</strong> di bagian bawah layar, lalu gulir dan pilih <strong className={t.textPrimary}>&quot;Add to Home Screen&quot;</strong>.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2">
-                <Monitor className="w-4 h-4 shrink-0 mt-0.5 text-purple-500" />
-                <div>
-                  <strong className={t.textPrimary}>Desktop (Chrome / Edge):</strong> Klik ikon instalasi (<code className="bg-slate-800 text-slate-200 px-1 py-0.5 rounded">Install</code> / ikon komputer dengan panah) di sebelah kanan bilah alamat URL, atau buka menu browser dan pilih <strong className={t.textPrimary}>&quot;Install SmartGlass...&quot;</strong>.
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* SLIDE-IN SIDE POPUP (BOTTOM-RIGHT / TOP-RIGHT) */}
+      {/* SLIDE-IN SIDE POPUP */}
       {isModalOpen && !isInstalled && (
         <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 max-w-sm w-full animate-in slide-in-from-right duration-300">
           <div className={`${t.surface} border ${t.border} rounded-2xl shadow-xl p-4 sm:p-5 space-y-4 text-xs`}>
@@ -195,7 +168,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
                 <div>
                   <h3 className="font-bold text-sm">Install SmartGlass</h3>
                   <p className={`text-[11px] ${t.textSec} mt-0.5`}>
-                    Akses cepat & pengalaman seperti aplikasi native.
+                    Akses cepat & pengalaman aplikasi native (Android Chrome / Edge).
                   </p>
                 </div>
               </div>
@@ -208,17 +181,9 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
               </button>
             </div>
 
-            {showManualHelp && (
-              <div className={`p-3 rounded-xl ${t.surfaceSec} border ${t.border} space-y-2 text-[11px]`}>
-                <div className="flex items-center justify-between font-semibold">
-                  <span>Petunjuk Instalasi Manual:</span>
-                  <button onClick={() => setShowManualHelp(false)} className="text-blue-500 hover:underline">Kembali</button>
-                </div>
-                <p className={t.textSec}>
-                  <strong>Android:</strong> Menu (⋮) → &quot;Instal aplikasi&quot; / &quot;Tambahkan ke layar utama&quot;.<br/>
-                  <strong>iOS Safari:</strong> Tombol Bagikan (Share) → &quot;Add to Home Screen&quot;.<br/>
-                  <strong>Desktop:</strong> Ikon instalasi di bilah alamat URL.
-                </p>
+            {!deferredPrompt && (
+              <div className={`p-2.5 rounded-lg ${t.surfaceSec} border ${t.border} text-[11px] ${t.textSec}`}>
+                Event instalasi belum tersedia dari browser. Tombol install akan aktif saat browser siap.
               </div>
             )}
 
@@ -231,7 +196,10 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
               </button>
               <button
                 onClick={handleInstallClick}
-                className={`px-4 py-2 rounded-lg ${t.primaryBtn} font-medium transition-colors flex items-center gap-1.5`}
+                disabled={!deferredPrompt}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                  deferredPrompt ? t.primaryBtn : 'bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-500 cursor-not-allowed'
+                }`}
               >
                 <Download className="w-3.5 h-3.5" />
                 Install
