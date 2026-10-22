@@ -8,9 +8,19 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+// Module-level global capture for early beforeinstallprompt events before React hydration
+let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    globalDeferredPrompt = e as BeforeInstallPromptEvent;
+  });
+}
+
 export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }) {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => globalDeferredPrompt);
+  const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(globalDeferredPrompt);
 
   const [isInstalled, setIsInstalled] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -26,7 +36,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
   const [installStatus, setInstallStatus] = useState<string>('');
   const [userChoiceResult, setUserChoiceResult] = useState<string>('belum ada');
   const [promptUsed, setPromptUsed] = useState<boolean>(false);
-  const [eventReceived, setEventReceived] = useState<boolean>(false);
+  const [eventReceived, setEventReceived] = useState<boolean>(Boolean(globalDeferredPrompt));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showManualGuidance, setShowManualGuidance] = useState(false);
@@ -72,9 +82,17 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
         setDiag(prev => ({ ...prev, manifestStatus: `Error: ${err.message}` }));
       });
 
+    // Sync global prompt if caught early
+    if (globalDeferredPrompt && !deferredPromptRef.current) {
+      deferredPromptRef.current = globalDeferredPrompt;
+      setDeferredPrompt(globalDeferredPrompt);
+      setEventReceived(true);
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       const promptEvent = e as BeforeInstallPromptEvent;
+      globalDeferredPrompt = promptEvent;
       deferredPromptRef.current = promptEvent;
       setDeferredPrompt(promptEvent);
       setEventReceived(true);
@@ -82,6 +100,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      globalDeferredPrompt = null;
       deferredPromptRef.current = null;
       setDeferredPrompt(null);
       setInstallStatus('Aplikasi berhasil dipasang.');
@@ -110,7 +129,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
   }, [isInstalled]);
 
   const handleInstallClick = async () => {
-    const currentPrompt = deferredPromptRef.current;
+    const currentPrompt = deferredPromptRef.current || globalDeferredPrompt;
     if (currentPrompt) {
       try {
         await currentPrompt.prompt();
@@ -122,6 +141,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
           setInstallStatus('Instalasi dibatalkan oleh pengguna.');
         }
         setPromptUsed(true);
+        globalDeferredPrompt = null;
         deferredPromptRef.current = null;
         setDeferredPrompt(null);
         setIsModalOpen(false);
@@ -130,7 +150,8 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
         setShowManualGuidance(true);
       }
     } else {
-      // Fallback when beforeinstallprompt event is not fired by browser yet
+      // Browser has not fired beforeinstallprompt event yet.
+      // Technical limitation: web apps cannot programmatically invoke native install dialog without this event.
       setShowManualGuidance(true);
     }
   };
@@ -204,7 +225,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className={t.textSec}>
-                  Status: <strong className={t.textPrimary}>{deferredPrompt ? 'Siap Diinstal (Prompt Native)' : 'Menu Chrome / Fallback'}</strong>
+                  Status: <strong className={t.textPrimary}>{deferredPrompt ? 'Siap Diinstal (Prompt Native)' : 'Menunggu Event / Menu'}</strong>
                 </span>
                 {!isModalOpen && (
                   <button
@@ -224,7 +245,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
                 className={`w-full py-2.5 px-4 rounded-lg ${t.primaryBtn} font-medium text-xs flex items-center justify-center gap-2 transition-colors`}
               >
                 <Download className="w-4 h-4" />
-                {deferredPrompt ? 'Install SmartGlass (Native)' : 'Panduan Install via Menu Chrome'}
+                {deferredPrompt ? 'Install SmartGlass (Native)' : 'Install / Panduan Browser'}
               </button>
             </div>
           )}
@@ -265,24 +286,22 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
                 <div className="flex items-center justify-between font-semibold">
                   <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                     <HelpCircle className="w-3.5 h-3.5" />
-                    Panduan Instalasi Menu Chrome
+                    Informasi Batasan Browser
                   </span>
                   <button onClick={() => setShowManualGuidance(false)} className="text-blue-500 hover:underline">Kembali</button>
                 </div>
                 <p className={`${t.textSec} leading-relaxed`}>
-                  Karena event browser belum dipicu otomatis, Anda tetap dapat menginstal SmartGlass V1 melalui menu resmi browser:
+                  Browser belum mengirim event <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded">beforeinstallprompt</code> secara otomatis. Secara teknis, aplikasi web <strong>tidak dapat memaksa</strong> dialog instalasi native terbuka tanpa event ini.
                 </p>
-                <ol className={`list-decimal list-inside space-y-1 ${t.textPrimary} font-medium`}>
-                  <li>Ketuk menu <strong className="text-emerald-500">titik tiga (⋮)</strong> di pojok kanan atas Chrome / Edge.</li>
-                  <li>Pilih menu <strong className="text-emerald-500">&quot;Instal aplikasi&quot;</strong> atau <strong className="text-emerald-500">&quot;Tambahkan ke layar utama&quot;</strong>.</li>
-                  <li>Konfirmasi pemasangan pada dialog sistem.</li>
-                </ol>
+                <p className={`${t.textSec} leading-relaxed`}>
+                  Anda tetap dapat menginstal aplikasi melalui menu resmi browser (ikon titik tiga <strong className="text-emerald-500">⋮</strong> di pojok kanan atas Chrome/Edge → <strong className="text-emerald-500">&quot;Instal aplikasi&quot;</strong>).
+                </p>
               </div>
             ) : (
               <p className={`text-[11px] ${t.textSec} leading-relaxed`}>
                 {deferredPrompt 
-                  ? 'Browser siap! Klik tombol Install di bawah untuk memunculkan dialog instalasi resmi.'
-                  : 'Event browser belum terkirim otomatis. Klik Install untuk melihat panduan instalasi via menu Chrome/Edge.'}
+                  ? 'Browser siap! Klik Install di bawah untuk membuka dialog instalasi native.'
+                  : 'Klik Install untuk memicu dialog native (atau melihat info jika event belum dikirim browser).'}
               </p>
             )}
 
@@ -298,7 +317,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
                 className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${t.primaryBtn}`}
               >
                 <Download className="w-3.5 h-3.5" />
-                {deferredPrompt ? 'Install' : 'Panduan Install'}
+                {deferredPrompt ? 'Install (Native)' : 'Install'}
               </button>
             </div>
           </div>
