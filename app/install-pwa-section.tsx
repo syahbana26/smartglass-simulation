@@ -194,7 +194,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
           {isInstalled ? (
             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Aplikasi sudah terpasang (Mode Standalone).</span>
+              <span>Aplikasi sudah terpasang</span>
             </div>
           ) : (
             <div className="space-y-3">
