@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Download, CheckCircle2, X, Glasses } from 'lucide-react';
+import { Download, CheckCircle2, X, Glasses, Info } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -22,41 +22,84 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
   });
   const [installStatus, setInstallStatus] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+
+  // Diagnostics states
+  const [diag, setDiag] = useState({
+    swSupported: false,
+    swRegistered: false,
+    swController: false,
+    manifestStatus: 'checking',
+    protocolOk: false,
+    isStandalone: false,
+    eventReceived: false,
+  });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const handleBeforeInstallPrompt = (e: Event) => {
-        e.preventDefault();
-        setDeferredPrompt(e as BeforeInstallPromptEvent);
-      };
+    if (typeof window === 'undefined') return;
 
-      const handleAppInstalled = () => {
-        setIsInstalled(true);
-        setDeferredPrompt(null);
-        setInstallStatus('Aplikasi berhasil dipasang.');
-        setIsModalOpen(false);
-      };
+    const protocolOk = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    const swSupported = 'serviceWorker' in navigator;
 
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.addEventListener('appinstalled', handleAppInstalled);
+    // Check SW registration and controller
+    if (swSupported) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        setDiag(prev => ({
+          ...prev,
+          swSupported: true,
+          swRegistered: regs.length > 0,
+          swController: Boolean(navigator.serviceWorker.controller),
+          protocolOk,
+          isStandalone,
+        }));
+      }).catch(() => {
+        setDiag(prev => ({ ...prev, swSupported: true, protocolOk, isStandalone }));
+      });
+    }
 
-      const dismissed = localStorage.getItem('smartglass_pwa_dismissed');
-      if (!isInstalled && dismissed !== 'true') {
-        const timer = setTimeout(() => {
-          setIsModalOpen(true);
-        }, 1200);
-        return () => {
-          clearTimeout(timer);
-          window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-          window.removeEventListener('appinstalled', handleAppInstalled);
-        };
-      }
+    // Check manifest fetch
+    fetch('/manifest.webmanifest')
+      .then(res => {
+        setDiag(prev => ({ ...prev, manifestStatus: res.ok ? `OK (${res.status})` : `Failed (${res.status})` }));
+      })
+      .catch(err => {
+        setDiag(prev => ({ ...prev, manifestStatus: `Error: ${err.message}` }));
+      });
 
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setDiag(prev => ({ ...prev, eventReceived: true }));
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+      setInstallStatus('Aplikasi berhasil dipasang.');
+      setIsModalOpen(false);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    const dismissed = localStorage.getItem('smartglass_pwa_dismissed');
+    if (!isInstalled && dismissed !== 'true') {
+      const timer = setTimeout(() => {
+        setIsModalOpen(true);
+      }, 1200);
       return () => {
+        clearTimeout(timer);
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         window.removeEventListener('appinstalled', handleAppInstalled);
       };
     }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, [isInstalled]);
 
   const handleInstallClick = async () => {
@@ -110,7 +153,30 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
               Pasang SmartGlass V1 di perangkat Android Anda (Chrome / Edge) untuk akses cepat.
             </p>
           </div>
+          <button
+            onClick={() => setShowDiagnostics(!showDiagnostics)}
+            className={`px-2 py-1 rounded text-[10px] ${t.surfaceSec} border ${t.border} ${t.textSec} hover:${t.textPrimary} flex items-center gap-1`}
+          >
+            <Info className="w-3 h-3" />
+            {showDiagnostics ? 'Sembunyikan Diagnostik' : 'Cek Diagnostik PWA'}
+          </button>
         </div>
+
+        {showDiagnostics && (
+          <div className={`p-3 rounded-xl ${t.surfaceSec} border ${t.border} text-[11px] space-y-1 font-mono`}>
+            <div className="font-bold pb-1 border-b border-slate-300 dark:border-slate-700">Audit & Diagnostik PWA:</div>
+            <div>- Protocol OK (HTTPS / Localhost): <strong className={diag.protocolOk ? 'text-emerald-500' : 'text-rose-500'}>{String(diag.protocolOk)}</strong></div>
+            <div>- Service Worker Supported: <strong className={diag.swSupported ? 'text-emerald-500' : 'text-rose-500'}>{String(diag.swSupported)}</strong></div>
+            <div>- Service Worker Registered: <strong className={diag.swRegistered ? 'text-emerald-500' : 'text-amber-500'}>{String(diag.swRegistered)}</strong></div>
+            <div>- Service Worker Controller: <strong className={diag.swController ? 'text-emerald-500' : 'text-amber-500'}>{String(diag.swController)}</strong></div>
+            <div>- Manifest Fetch Status: <strong className={diag.manifestStatus.includes('OK') ? 'text-emerald-500' : 'text-rose-500'}>{diag.manifestStatus}</strong></div>
+            <div>- Standalone Mode Active: <strong className={diag.isStandalone ? 'text-emerald-500' : 'text-slate-400'}>{String(diag.isStandalone)}</strong></div>
+            <div>- beforeinstallprompt Fired: <strong className={diag.eventReceived ? 'text-emerald-500' : 'text-amber-500'}>{String(diag.eventReceived)}</strong></div>
+            <p className="text-[10px] text-slate-500 pt-1">
+              Catatan: Chrome/Edge hanya mengirim `beforeinstallprompt` jika manifest valid, SW aktif, HTTPS/localhost, dan kriteria keterlibatan pengguna (engagement) terpenuhi.
+            </p>
+          </div>
+        )}
 
         <div className={`p-4 rounded-xl ${t.surfaceSec} border ${t.border} space-y-3 text-xs`}>
           {isInstalled ? (
@@ -144,7 +210,7 @@ export default function InstallPWASection({ theme }: { theme: 'light' | 'dark' }
                 </button>
               ) : (
                 <div className={`w-full py-2 px-3 rounded-lg ${t.surface} border ${t.border} ${t.textSec} text-center text-[11px]`}>
-                  Instalasi belum tersedia / Menunggu aksi browser (Android Chrome / Edge).
+                  Event instalasi belum tersedia dari browser. Tombol install akan aktif saat browser siap.
                 </div>
               )}
             </div>
