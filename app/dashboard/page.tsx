@@ -19,6 +19,7 @@ import {
   X,
   Send
 } from 'lucide-react';
+import InstallPWASection from '../install-pwa-section';
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'profile' | 'settings'>('dashboard');
@@ -572,6 +573,9 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* C. PWA INSTALLATION SECTION */}
+                  <InstallPWASection theme={theme} />
                 </div>
               </div>
             </div>
